@@ -69,6 +69,7 @@ class Authorise(QDialog, Authorise_Ui_Dialog):
         self.close_ev = False
         self.mainwindow.user = self.lineEdit.text()
         self.mainwindow.password = self.lineEdit_2.text()
+        self.mainwindow.start_session()
         self.close()
         self.close_ev = True
 
@@ -142,11 +143,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         DialogSecondIns.show()
         DialogSecondIns.exec()
 
+    def start_session(self):
+        self.operation = Operation(self.user, self.password)
+
     def execute_str(self):
         request = self.lineEdit.text()
         bd = self.cur_box
-        operation = Operation(self.user, self.password)
-        answer = operation.execute(request, bd)
+        answer = self.operation.execute(request, bd)
         print(answer)
         if answer == "Exception_db":
             error_dialog = QErrorMessage()
