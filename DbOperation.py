@@ -2,6 +2,7 @@ import fdb
 from random import randint
 import time
 import datetime
+import ast
 
 
 class Operation:
@@ -18,7 +19,15 @@ class Operation:
         big_s = 'SELECT'
         small_c = 'create'
         big_c = 'CREATE'
-        fake_db = db.replace('.fdb', '_FAKE.fdb')
+        fake_db = db.replace('.fdb', '')
+        if '.FDB' in fake_db:
+            fake_db = fake_db.replace('.FDB', '')
+        fake_db += '_FAKE.fdb'
+        if '.FDB' in db:
+            db = db.replace('.FDB', '')
+        if '.fdb' in db:
+            db = db.replace('.fdb', '')
+        db += '.fdb'
         stop_words = ['UPDATE', 'update', 'DELETE', 'delete']
         answer = ''
         col = 0
@@ -45,14 +54,16 @@ class Operation:
 
                 else:
                     if small_c in text or big_c in text:
+                        print(fake_db, text)
                         answer_fake = self.make_connection(fake_db, text)
-                        print(answer_fake)
+                        print('3', answer_fake)
+                        print(db)
                         answer = self.make_connection(db, text)
                     else:
 
                         if small_s in text or big_s in text:
                             if self.trigger_bad:
-                                print('3')
+                                print('4')
                                 answer = self.make_connection(fake_db, text)
                                 today = datetime.datetime.today()
                                 date = today.strftime("%Y-%m-%d-%H.%M.%S")
@@ -65,30 +76,161 @@ class Operation:
                                 answer = self.make_connection(db, text)
                         else:
 
-                            fake_text = self.make_fake(text)
+                            fake_text = self.make_fake(text, fake_db)
                             print(fake_text, fake_db)
                             fake_answer = self.make_connection(fake_db, fake_text)
                             print(fake_answer)
                             answer = self.make_connection(db, text)
         return answer+self.time_ans
 
-    @staticmethod
-    def make_fake(text):
-        counter = 0
+    def make_fake(self, text, fake_db):
+        print('10', text)
+        text = text.lower()
+        tabl = "into"
+        res = text[text.find(tabl) + len(tabl):].split()[0]
+        print('11', res)
+        req = "SELECT * FROM {};".format(res)
+        print('12', req)
+        print(fake_db, req)
+        number = self.make_check(fake_db, req)
+        print("HERE iS", number)
+        print("----------------------")
+        print(len(number))
         fake_text = ''
-        exceptions = [',', '.', ';', ':', '(', ')', ' ', '=']
-        for i in text:
-            cur_ = i
-            if is_int(i):
-                r = randint(0, 1)
-                if counter % 2 == r:
-                    cur_ = make_random()
-                counter += 1
-            if i in exceptions:
-                counter = 0
-            fake_text += cur_
-        print(fake_text)
+        if len(number) < 2:
+            print("here we are")
+            counter = 0
+            comma = ','
+            pos = text.find(comma)
+            text_part_f = text[:pos] + ","
+            text_part_s = text[pos + 1:]
+            print('after coma', text_part_s)
+            exceptions = [',', '.', ';', ':', '(', ')', ' ', '=']
+            for i in text_part_s:
+                cur_ = i
+                if is_int(i):
+                    r = randint(0, 1)
+                    if counter % 2 == r:
+                        cur_ = make_random()
+                    counter += 1
+                if i in exceptions:
+                    counter = 0
+                fake_text += cur_
+            fake_text = text_part_f + fake_text
+            print(fake_text)
+        else:
+            ran_first = randint(0, len(number)-1)
+            req = "SELECT * FROM {} WHERE id = {};".format(res, ran_first)
+            print(req)
+            first = self.make_check(fake_db, req)
+            ran_sec = randint(0, len(number)-1)
+            req = "SELECT * FROM {} WHERE id = {};".format(res, ran_sec)
+            print(req)
+            second = self.make_check(fake_db, req)
+            print("HERE iS", first, second)
+            data_first = list(first)[0]
+            data_second = list(second)[0]
+            print("DATAS:", data_first, data_second)
+            l = ''
+            for i in range(len(text)):
+                if text[i] == '(':
+                    while text[i] != ")":
+                        l += text[i]
+                        i+=1
+            l += ')'
+            print(l)
+            one = ast.literal_eval(l)
+            print(one)
+            print(one[0])
+            print(data_second)
+            print(data_first)
+            matrix = [
+                one[1:],
+                data_first[1:],
+                data_second[1:]
+            ]
+            print(matrix)
+            generated = list(one)
+            for i in range(len(one)):
+                if i == 0:
+                    generated[i] = one[i]
+                else:
+                    n = randint(0, 2)
+                    generated[i] = matrix[n][i-1]
+
+            changed_first = list(data_first)
+
+            for i in range(len(changed_first)):
+                if i == 0:
+                    changed_first[i] = data_first[i]
+                else:
+                    n = randint(0, 2)
+                    changed_first[i] = matrix[n][i-1]
+
+            changed_second = list(data_second)
+
+            for i in range(len(changed_second)):
+                if i == 0:
+                    changed_second[i] = data_second[i]
+                else:
+                    n = randint(0, 2)
+                    changed_second[i] = matrix[n][i-1]
+            print(generated)
+            print(changed_first)
+            print(changed_second)
+
+            print("----------------------")
+            con = fdb.connect(dsn=fake_db, user=self.user, password=self.password)
+            cur = con.cursor()
+            text_col = "select * from {}".format(res)
+            cur.execute(text_col)
+            text_update = ''
+            c = 0
+            for fieldDesc in cur.description:
+                print(fieldDesc[fdb.DESCRIPTION_NAME])
+                text_update += str(fieldDesc[fdb.DESCRIPTION_NAME])
+                text_update += "="
+                text_update += str(changed_first[c])
+                c += 1
+                text_update += ','
+            text_update = text_update[0:-1]
+            update_text_first = 'UPDATE {} SET {} WHERE Id ={};'.format(res, text_update, changed_first[0])
+            new_req = self.make_check(fake_db,update_text_first)
+            print(new_req)
+            fake_text = 'INSERT INTO {} VALUES {};'.format(res, tuple(generated))
+            text_update = ''
+            c = 0
+            for fieldDesc in cur.description:
+                print(fieldDesc[fdb.DESCRIPTION_NAME])
+                text_update += str(fieldDesc[fdb.DESCRIPTION_NAME])
+                text_update += "="
+                text_update += str(changed_second[c])
+                c += 1
+                text_update += ','
+            text_update = text_update[0:-1]
+            update_text_second = 'UPDATE {} SET {} WHERE Id ={};'.format(res, text_update, changed_second[0])
+            new_req = self.make_check(fake_db, update_text_second)
+            print(new_req)
+
         return fake_text
+
+    def make_check(self, db, text):
+        try:
+            con = fdb.connect(dsn=db, user=self.user, password=self.password)
+            cur = con.cursor()
+            cur.execute(text)
+
+        except fdb.fbcore.DatabaseError:
+            return "Exception_db"
+        try:
+            answer = list(cur.fetchall())
+        except:
+            answer = []
+            print('6')
+
+        cur.transaction.commit("""commit;""")
+        con.commit()
+        return answer
 
     def make_connection(self, db, text):
         try:
@@ -112,7 +254,6 @@ class Operation:
                         str_ += ''
                     else:
                         str_ += answer[i]
-                    print(str_)
             answer = str_
 
         except:
