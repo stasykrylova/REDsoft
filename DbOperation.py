@@ -123,7 +123,9 @@ class Operation:
             req = "SELECT * FROM {} WHERE id = {};".format(res, ran_first)
             print(req)
             first = self.make_check(fake_db, req)
-            ran_sec = randint(0, len(number)-1)
+            ran_sec = randint(0, len(number) - 1)
+            while ran_first == ran_sec:
+                ran_sec = randint(0, len(number)-1)
             req = "SELECT * FROM {} WHERE id = {};".format(res, ran_sec)
             print(req)
             second = self.make_check(fake_db, req)
@@ -149,6 +151,7 @@ class Operation:
                 data_first[1:],
                 data_second[1:]
             ]
+            matrix = [list(ele) for ele in matrix]
             print(matrix)
             generated = list(one)
             for i in range(len(one)):
@@ -156,7 +159,11 @@ class Operation:
                     generated[i] = one[i]
                 else:
                     n = randint(0, 2)
+                    print('okay')
                     generated[i] = matrix[n][i-1]
+                    print('okay')
+                    matrix[n][i - 1] = 'mAtRiXnUlL'
+            print('matr', matrix)
 
             changed_first = list(data_first)
 
@@ -165,7 +172,18 @@ class Operation:
                     changed_first[i] = data_first[i]
                 else:
                     n = randint(0, 2)
+                    while matrix[n][i - 1] == 'mAtRiXnUlL':
+                        n = randint(0, 2)
                     changed_first[i] = matrix[n][i-1]
+
+                    if isinstance(changed_first[i], str):
+                        string = changed_first[i]
+                        changed_first[i] = '\''
+                        changed_first[i] += string
+                        changed_first[i] += '\''
+
+                    matrix[n][i - 1] = 'mAtRiXnUlL'
+            print('matr', matrix)
 
             changed_second = list(data_second)
 
@@ -174,10 +192,24 @@ class Operation:
                     changed_second[i] = data_second[i]
                 else:
                     n = randint(0, 2)
+                    while matrix[n][i - 1] == 'mAtRiXnUlL':
+                        n = randint(0, 2)
                     changed_second[i] = matrix[n][i-1]
+
+                    if isinstance(changed_second[i], str):
+                        string = changed_second[i]
+                        changed_second[i] = '\''
+                        changed_second[i] += string
+                        changed_second[i] += '\''
+
+                    matrix[n][i - 1] = 'mAtRiXnUlL'
+            print('matr', matrix)
+
             print(generated)
             print(changed_first)
             print(changed_second)
+
+
 
             print("----------------------")
             con = fdb.connect(dsn=fake_db, user=self.user, password=self.password)
@@ -194,8 +226,9 @@ class Operation:
                 c += 1
                 text_update += ','
             text_update = text_update[0:-1]
-            update_text_first = 'UPDATE {} SET {} WHERE Id ={};'.format(res, text_update, changed_first[0])
-            new_req = self.make_check(fake_db,update_text_first)
+            update_text_first = 'UPDATE {} SET {} WHERE ID = {};'.format(res, text_update, int(changed_first[0]))
+            print(update_text_first)
+            new_req = self.make_check(fake_db, update_text_first)
             print(new_req)
             fake_text = 'INSERT INTO {} VALUES {};'.format(res, tuple(generated))
             text_update = ''
@@ -208,7 +241,8 @@ class Operation:
                 c += 1
                 text_update += ','
             text_update = text_update[0:-1]
-            update_text_second = 'UPDATE {} SET {} WHERE Id ={};'.format(res, text_update, changed_second[0])
+            update_text_second = 'UPDATE {} SET {} WHERE ID ={};'.format(res, text_update, changed_second[0])
+            print(update_text_second)
             new_req = self.make_check(fake_db, update_text_second)
             print(new_req)
 
